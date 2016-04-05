@@ -56,14 +56,16 @@ public abstract class AbstractIssueTracker implements IssueTrackerService {
             .compile("(http|ftp|https)://([\\w_-]+(?:(?:\\.[\\w_-]+)+))([\\w.,@?^=%&:/~+#-]*[\\w@?^=%&/~+#-])?");
 
     protected final TrackerType TRACKER_TYPE;
+    protected final Class<? extends Issue> issueClass;
     protected ExecutorService executorService;
     protected IssueTrackerConfig config;
     protected URL baseUrl;
 
     protected abstract Log getLog();
 
-    public AbstractIssueTracker(TrackerType TRACKER_TYPE) {
+    public AbstractIssueTracker(TrackerType TRACKER_TYPE, Class<? extends Issue> issueClass) {
         this.TRACKER_TYPE = TRACKER_TYPE;
+        this.issueClass = issueClass;
     }
 
     @Override
@@ -121,6 +123,7 @@ public abstract class AbstractIssueTracker implements IssueTrackerService {
 
     @Override
     public void addCommentToIssue(Issue issue, Comment comment) throws NotFoundException {
+        checkIssueInstance(issue);
         checkHost(issue.getURL());
         comment.getId().ifPresent(id ->
                 Utils.logWarnMessage(getLog(), "ID: " + id + "ignored when posting comments " +
@@ -134,6 +137,13 @@ public abstract class AbstractIssueTracker implements IssueTrackerService {
                     "the specified host domain is different from this service.");
     }
 
+    protected void checkIssueInstance(Issue issue) {
+        if (!issueClass.isAssignableFrom(issue.getClass())) {
+            throw new IllegalArgumentException("The provided issue object must be an instance or an extension of class: "
+                    + issueClass.getName());
+        }
+    }
+
     @Override
     public boolean urlExists(URL url) {
         Objects.requireNonNull(url);
@@ -145,7 +155,9 @@ public abstract class AbstractIssueTracker implements IssueTrackerService {
 
         return commentMap.entrySet()
                 .stream()
-                .filter(entry -> entry.getKey() != null && urlExists(entry.getKey().getURL()))
+                .filter(entry -> entry.getKey() != null)
+                .filter(entry -> urlExists(entry.getKey().getURL()))
+                .filter(entry -> issueClass.isInstance(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
@@ -153,7 +165,9 @@ public abstract class AbstractIssueTracker implements IssueTrackerService {
         Objects.requireNonNull(issues);
 
         return issues.stream()
-                .filter(i -> i != null && urlExists(i.getURL()))
+                .filter(Objects::nonNull)
+                .filter(issue -> urlExists(issue.getURL()))
+                .filter(issueClass::isInstance)
                 .collect(Collectors.toList());
     }
 
@@ -161,7 +175,8 @@ public abstract class AbstractIssueTracker implements IssueTrackerService {
         Objects.requireNonNull(urls);
 
         return urls.stream()
-                .filter(url -> url != null && urlExists(url))
+                .filter(Objects::nonNull)
+                .filter(this::urlExists)
                 .collect(Collectors.toList());
     }
 }

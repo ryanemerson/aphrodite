@@ -36,46 +36,44 @@ import java.util.Optional;
  *
  * @author egonzalez
  */
-public class Issue {
+public abstract class Issue {
 
-    private URL url;
+    private final URL url;
 
     // The unique id of an issue within its issue tracker domain e.g WFLY-5048
-    private String trackerId;
+    protected String trackerId;
 
-    private String product; // E.g EAP6
+    protected String product; // E.g EAP6
 
-    private List<String> components; // E.g Clustering
+    protected List<String> components; // E.g Clustering
 
-    private String summary;
+    protected String summary;
 
-    private String description;
+    protected String description;
 
-    private String assignee;
+    protected String assignee;
 
-    private String reporter;
+    protected String reporter;
 
-    private Stage stage;
+    protected Stage stage;
 
-    private IssueStatus status;
+    protected IssueStatus status;
 
-    private IssueType type;
+    protected IssueType type;
 
-    private Release release;
+    protected Map<String, FlagStatus> streamStatus;
 
-    private Map<String, FlagStatus> streamStatus;
+    protected List<URL> dependsOn;
 
-    private List<URL> dependsOn;
+    protected List<URL> blocks;
 
-    private List<URL> blocks;
+    protected Date creationTime;
 
-    private Date creationTime;
+    protected Date lastUpdated;
 
-    private Date lastUpdated;
+    protected IssueEstimation estimation;
 
-    private IssueEstimation estimation;
-
-    private List<Comment> comments;
+    protected List<Comment> comments;
 
     public Issue(URL url) {
         if (url == null)
@@ -85,7 +83,6 @@ public class Issue {
         this.stage = new Stage();
         this.status = IssueStatus.UNDEFINED;
         this.type = IssueType.UNDEFINED;
-        this.release = new Release();
         this.streamStatus = new HashMap<>();
         this.dependsOn = new ArrayList<>();
         this.blocks = new ArrayList<>();
@@ -180,15 +177,6 @@ public class Issue {
         this.type = type;
     }
 
-    public Release getRelease() {
-        return release;
-    }
-
-    public void setRelease(Release release) {
-        Objects.requireNonNull(release, "An Issue's Release cannot be set to null");
-        this.release = release;
-    }
-
     public Map<String, FlagStatus> getStreamStatus() {
         return streamStatus;
     }
@@ -249,32 +237,7 @@ public class Issue {
         this.comments = comments;
     }
 
-    @Override
-    public String toString() {
-        return "Issue{" +
-                "url=" + url +
-                ", trackerId='" + trackerId + '\'' +
-                ", product='" + product + '\'' +
-                ", component='" + components + '\'' +
-                ", summary='" + summary + '\'' +
-                ", description='" + getPrintableDescription() + '\'' +
-                ", assignee='" + assignee + '\'' +
-                ", reporter='" + reporter + '\'' +
-                ", stage=" + stage +
-                ", status=" + status +
-                ", type=" + type +
-                ", release=" + release +
-                ", streamStatus=" + streamStatus +
-                ", dependsOn=" + dependsOn +
-                ", blocks=" + blocks +
-                ", creationDate=" + creationTime +
-                ", lastUpdated=" + lastUpdated +
-                ", estimation=" + estimation +
-                ", #comments=" + comments.size() +
-                "}\n";
-    }
-
-    private String getPrintableDescription() {
+    protected String getPrintableDescription() {
         if (description == null)
             return "";
 
@@ -299,5 +262,27 @@ public class Issue {
     @Override
     public int hashCode() {
         return url.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return  "url=" + url +
+                ", trackerId='" + trackerId + '\'' +
+                ", product='" + product + '\'' +
+                ", component='" + components + '\'' +
+                ", summary='" + summary + '\'' +
+                ", description='" + getPrintableDescription() + '\'' +
+                ", assignee='" + assignee + '\'' +
+                ", reporter='" + reporter + '\'' +
+                ", stage=" + stage +
+                ", status=" + status +
+                ", type=" + type +
+                ", streamStatus=" + streamStatus +
+                ", dependsOn=" + dependsOn +
+                ", blocks=" + blocks +
+                ", creationDate=" + creationTime +
+                ", lastUpdated=" + lastUpdated +
+                ", estimation=" + estimation +
+                ", #comments=" + comments.size();
     }
 }

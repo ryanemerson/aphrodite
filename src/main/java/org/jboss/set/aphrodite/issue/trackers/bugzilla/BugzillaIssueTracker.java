@@ -52,7 +52,7 @@ public class BugzillaIssueTracker extends AbstractIssueTracker {
     private BugzillaClient bzClient;
 
     public BugzillaIssueTracker() {
-        super(TrackerType.BUGZILLA);
+        super(TrackerType.BUGZILLA, BugzillaIssue.class);
     }
 
     @Override
@@ -98,8 +98,9 @@ public class BugzillaIssueTracker extends AbstractIssueTracker {
 
     @Override
     public boolean updateIssue(Issue issue) throws NotFoundException, AphroditeException {
+        checkIssueInstance(issue);
         checkHost(issue.getURL());
-        return bzClient.updateIssue(issue);
+        return bzClient.updateIssue((BugzillaIssue) issue);
     }
 
     @Override

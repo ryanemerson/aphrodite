@@ -45,6 +45,7 @@ import static org.jboss.set.aphrodite.issue.trackers.bugzilla.BugzillaFields.REP
 import static org.jboss.set.aphrodite.issue.trackers.bugzilla.BugzillaFields.STATUS;
 import static org.jboss.set.aphrodite.issue.trackers.bugzilla.BugzillaFields.SUMMARY;
 import static org.jboss.set.aphrodite.issue.trackers.bugzilla.BugzillaFields.TARGET_MILESTONE;
+import static org.jboss.set.aphrodite.issue.trackers.bugzilla.BugzillaFields.TARGET_RELEASE;
 import static org.jboss.set.aphrodite.issue.trackers.bugzilla.BugzillaFields.VERSION;
 import static org.jboss.set.aphrodite.issue.trackers.bugzilla.BugzillaFields.getAphroditeFlag;
 import static org.jboss.set.aphrodite.issue.trackers.bugzilla.BugzillaFields.getBugzillaFlag;
@@ -66,7 +67,6 @@ import org.jboss.set.aphrodite.domain.Issue;
 import org.jboss.set.aphrodite.domain.IssueEstimation;
 import org.jboss.set.aphrodite.domain.IssueStatus;
 import org.jboss.set.aphrodite.domain.IssueType;
-import org.jboss.set.aphrodite.domain.Release;
 import org.jboss.set.aphrodite.domain.Stage;
 import org.jboss.set.aphrodite.spi.AphroditeException;
 
@@ -77,10 +77,10 @@ class IssueWrapper {
 
     private static final Log LOG = LogFactory.getLog(BugzillaIssueTracker.class);
 
-    Issue bugzillaBugToIssue(Map<String, Object> bug, URL baseURL) {
+    BugzillaIssue bugzillaBugToIssue(Map<String, Object> bug, URL baseURL) {
         Integer id = (Integer) bug.get(ID);
         URL url = Utils.createURL(baseURL + ID_QUERY + id);
-        Issue issue = new Issue(url);
+        BugzillaIssue issue = new BugzillaIssue(url);
         issue.setTrackerId(id.toString());
         issue.setAssignee((String) bug.get(ASSIGNEE));
         issue.setReporter((String) bug.get(REPORTER));
@@ -105,10 +105,9 @@ class IssueWrapper {
             issue.setType(IssueType.UNDEFINED);
         }
 
-        String version = (String) ((Object[]) bug.get(VERSION))[0];
-        Release release = new Release(version, (String) bug.get(TARGET_MILESTONE));
-        issue.setRelease(release);
-
+        issue.setVersion((String)((Object[]) bug.get(VERSION))[0]);
+        issue.setTargetMilestone((String) bug.get(TARGET_MILESTONE));
+        issue.setTargetRelease((String) bug.get(TARGET_RELEASE));
         issue.setDependsOn(getListOfURlsFromIds(bug, baseURL, DEPENDS_ON));
         issue.setBlocks(getListOfURlsFromIds(bug, baseURL, BLOCKS));
 
@@ -128,7 +127,7 @@ class IssueWrapper {
 
     }
 
-    Map<String, Object> issueToBugzillaBug(Issue issue, Map<String, Object> loginDetails) throws AphroditeException {
+    Map<String, Object> issueToBugzillaBug(BugzillaIssue issue, Map<String, Object> loginDetails) throws AphroditeException {
         checkUnsupportedUpdateFields(issue);
         checkUnsupportedIssueStatus(issue);
 
@@ -139,8 +138,11 @@ class IssueWrapper {
         params.put(COMPONENT, issue.getComponents().toArray(new String[issue.getComponents().size()]));
         issue.getAssignee().ifPresent(assignee -> params.put(ASSIGNEE, assignee));
         issue.getReporter().ifPresent(reporter -> params.put(REPORTER, reporter));
-        issue.getRelease().getVersion().ifPresent(version -> params.put(VERSION, version));
-        issue.getRelease().getMilestone().ifPresent(milestone -> params.put(TARGET_MILESTONE, milestone));
+
+        issue.getTargetMilestone().ifPresent(milestone -> params.put(TARGET_MILESTONE, milestone));
+        issue.getVersion().ifPresent(version -> params.put(VERSION, version));
+        issue.getTargetRelease().ifPresent(release -> params.put(TARGET_RELEASE, release));
+
         issue.getEstimation().ifPresent(tracking -> {
             params.put(HOURS_WORKED, tracking.getHoursWorked());
             params.put(ESTIMATED_TIME, tracking.getInitialEstimate());

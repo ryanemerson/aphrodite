@@ -51,7 +51,7 @@ class JiraQueryBuilder {
             addCriteriaToJQL("updated >= ", formattedDate, " AND ", sb);
         });
 
-        criteria.getRelease().ifPresent(release -> {
+        criteria.getString().ifPresent(release -> {
             addCriteriaToJQL("fixVersion = ", release.getVersion().orElse(null), " AND ", sb);
             addCriteriaToJQL(getJQLField(TARGET_RELEASE) + " = ", release.getMilestone().orElse(null), " AND ", sb);
         });

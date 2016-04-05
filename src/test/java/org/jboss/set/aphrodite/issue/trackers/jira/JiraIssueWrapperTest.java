@@ -30,7 +30,6 @@ import static org.mockito.Mockito.when;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.Date;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
@@ -42,7 +41,7 @@ import org.jboss.set.aphrodite.domain.FlagStatus;
 import org.jboss.set.aphrodite.domain.Issue;
 import org.jboss.set.aphrodite.domain.IssueEstimation;
 import org.jboss.set.aphrodite.domain.IssueStatus;
-import org.jboss.set.aphrodite.domain.Release;
+import org.jboss.set.aphrodite.domain.String;
 import org.jboss.set.aphrodite.domain.Stage;
 import org.jboss.set.aphrodite.issue.trackers.util.TestUtils;
 import org.joda.time.DateTime;
@@ -211,7 +210,7 @@ public class JiraIssueWrapperTest {
         result.setComponents(Collections.singletonList("CLI"));
         result.setProduct("EAP");
         result.setType(org.jboss.set.aphrodite.domain.IssueType.BUG);
-        result.setRelease(new Release("6.4.4", "---"));
+//        result.setFixVersions(new String("6.4.4", "---"));
         result.setDependsOn(Collections.emptyList());
         result.setBlocks(Collections.emptyList());
         result.setEstimation(new IssueEstimation(8.0, 8.0));

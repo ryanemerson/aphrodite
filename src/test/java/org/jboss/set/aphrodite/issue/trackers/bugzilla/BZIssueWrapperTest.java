@@ -28,7 +28,7 @@ import org.jboss.set.aphrodite.domain.Issue;
 import org.jboss.set.aphrodite.domain.IssueEstimation;
 import org.jboss.set.aphrodite.domain.IssueStatus;
 import org.jboss.set.aphrodite.domain.IssueType;
-import org.jboss.set.aphrodite.domain.Release;
+import org.jboss.set.aphrodite.domain.String;
 import org.jboss.set.aphrodite.domain.Stage;
 import org.jboss.set.aphrodite.issue.trackers.util.TestUtils;
 import org.jboss.set.aphrodite.spi.AphroditeException;
@@ -188,7 +188,7 @@ public class BZIssueWrapperTest {
         result.setComponents(Collections.singletonList("CLI"));
         result.setProduct("EAP");
         result.setType(IssueType.BUG);
-        result.setRelease(new Release("6.4.4", "---"));
+//        result.setFixVersions(new String("6.4.4", "---"));
         result.setDependsOn(Arrays.asList(
                 new URL("https://bugzilla.redhat.com/show_bug.cgi?id=1111112"),
                 new URL("https://bugzilla.redhat.com/show_bug.cgi?id=1111113")

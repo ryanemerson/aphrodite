@@ -68,7 +68,7 @@ class BugzillaQueryBuilder {
         criteria.getLastUpdated().ifPresent(date -> queryMap.put(LAST_UPDATED, date.atStartOfDay().toString()));
         criteria.getProduct().ifPresent(product -> queryMap.put(PRODUCT, product));
         criteria.getComponent().ifPresent(component -> queryMap.put(COMPONENT, component));
-        criteria.getRelease().ifPresent(release -> {
+        criteria.getString().ifPresent(release -> {
             release.getMilestone().ifPresent(milestone -> queryMap.put(TARGET_MILESTONE, milestone));
             release.getVersion().ifPresent(version -> queryMap.put(VERSION, version));
         });

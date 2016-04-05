@@ -303,13 +303,13 @@ public class BugzillaClient {
     private Map<String, Issue> fetchAllIssues(final Object[] bugs) {
         Map<String, Issue> issues = new HashMap<>();
         for (Map<String, Object> struct : XMLRPC.iterable(XMLRPC.RPC_STRUCT, bugs)) {
-            Issue issue = WRAPPER.bugzillaBugToIssue(struct, baseURL);
+            BugzillaIssue issue = WRAPPER.bugzillaBugToIssue(struct, baseURL);
             issues.put(issue.getTrackerId().get(), issue);
         }
         return issues;
     }
 
-    public boolean updateIssue(Issue issue) throws AphroditeException {
+    public boolean updateIssue(BugzillaIssue issue) throws AphroditeException {
         Map<String, Object> params = WRAPPER.issueToBugzillaBug(issue, loginDetails);
         return runCommand(METHOD_UPDATE_BUG, params);
     }

@@ -34,26 +34,26 @@ import java.util.Optional;
  */
 public class SearchCriteria {
     private final IssueStatus status;
-    private final String assignee;
-    private final String reporter;
-    private final String product;
-    private final String component;
+    private final java.lang.String assignee;
+    private final java.lang.String reporter;
+    private final java.lang.String product;
+    private final java.lang.String component;
     private final Stage stage;
-    private final Release release;
+    private final String string;
     private final Map<Stream, FlagStatus> streams;
     private final LocalDate lastUpdated;
     private final Integer maxResults;
 
-    private SearchCriteria(IssueStatus status, String assignee, String reporter, String product,
-            String component, Stage stage, Release release, Map<Stream, FlagStatus> streams,
-            LocalDate lastUpdated, Integer maxResults) {
+    private SearchCriteria(IssueStatus status, java.lang.String assignee, java.lang.String reporter, java.lang.String product,
+                           java.lang.String component, Stage stage, String string, Map<Stream, FlagStatus> streams,
+                           LocalDate lastUpdated, Integer maxResults) {
         this.status = status;
         this.assignee = assignee;
         this.reporter = reporter;
         this.product = product;
         this.component = component;
         this.stage = stage;
-        this.release = release;
+        this.string = string;
         this.streams = streams;
         this.lastUpdated = lastUpdated;
         this.maxResults = maxResults;
@@ -66,19 +66,19 @@ public class SearchCriteria {
         return Optional.ofNullable(status);
     }
 
-    public Optional<String> getAssignee() {
+    public Optional<java.lang.String> getAssignee() {
         return Optional.ofNullable(assignee);
     }
 
-    public Optional<String> getReporter() {
+    public Optional<java.lang.String> getReporter() {
         return Optional.ofNullable(reporter);
     }
 
-    public Optional<String> getProduct() {
+    public Optional<java.lang.String> getProduct() {
         return Optional.ofNullable(product);
     }
 
-    public Optional<String> getComponent() {
+    public Optional<java.lang.String> getComponent() {
         return Optional.ofNullable(component);
     }
 
@@ -86,8 +86,8 @@ public class SearchCriteria {
         return Optional.ofNullable(stage);
     }
 
-    public Optional<Release> getRelease() {
-        return Optional.ofNullable(release);
+    public Optional<String> getString() {
+        return Optional.ofNullable(string);
     }
 
     public Optional<Map<Stream, FlagStatus>> getStreams() {
@@ -104,18 +104,18 @@ public class SearchCriteria {
 
     public boolean isEmpty() {
         return status == null && assignee == null && reporter == null && product == null && component == null && stage == null
-                && release == null && streams == null && lastUpdated == null && maxResults == null;
+                && string == null && streams == null && lastUpdated == null && maxResults == null;
     }
 
     public static class Builder {
 
         private IssueStatus status;
-        private String assignee;
-        private String reporter;
-        private String product;
-        private String component;
+        private java.lang.String assignee;
+        private java.lang.String reporter;
+        private java.lang.String product;
+        private java.lang.String component;
         private Stage stage;
-        private Release release;
+        private String string;
         private Map<Stream, FlagStatus> streams;
         private LocalDate startDate;
         private Integer maxResults;
@@ -125,22 +125,22 @@ public class SearchCriteria {
             return this;
         }
 
-        public Builder setAssignee(String assignee) {
+        public Builder setAssignee(java.lang.String assignee) {
             this.assignee = assignee;
             return this;
         }
 
-        public Builder setReporter(String reporter) {
+        public Builder setReporter(java.lang.String reporter) {
             this.reporter = reporter;
             return this;
         }
 
-        public Builder setProduct(String product) {
+        public Builder setProduct(java.lang.String product) {
             this.product = product;
             return this;
         }
 
-        public Builder setComponent(String component) {
+        public Builder setComponent(java.lang.String component) {
             this.component = component;
             return this;
         }
@@ -150,8 +150,8 @@ public class SearchCriteria {
             return this;
         }
 
-        public Builder setRelease(Release release) {
-            this.release = release;
+        public Builder setString(String string) {
+            this.string = string;
             return this;
         }
 
@@ -171,7 +171,7 @@ public class SearchCriteria {
         }
 
         public SearchCriteria build() {
-            return new SearchCriteria(status, assignee, reporter, product, component, stage, release,
+            return new SearchCriteria(status, assignee, reporter, product, component, stage, string,
                     streams, startDate, maxResults);
         }
     }

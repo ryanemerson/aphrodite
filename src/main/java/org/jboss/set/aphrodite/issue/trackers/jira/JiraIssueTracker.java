@@ -63,6 +63,7 @@ import com.atlassian.jira.rest.client.api.JiraRestClientFactory;
 import com.atlassian.jira.rest.client.api.SearchRestClient;
 import com.atlassian.jira.rest.client.api.domain.Filter;
 import com.atlassian.jira.rest.client.api.domain.IssueLink;
+import com.atlassian.jira.rest.client.api.domain.Project;
 import com.atlassian.jira.rest.client.api.domain.SearchResult;
 import com.atlassian.jira.rest.client.api.domain.Transition;
 import com.atlassian.jira.rest.client.api.domain.IssueLinkType.Direction;
@@ -86,7 +87,7 @@ public class JiraIssueTracker extends AbstractIssueTracker {
     private JiraRestClient restClient ;
 
     public JiraIssueTracker() {
-        super(TrackerType.JIRA);
+        super(TrackerType.JIRA, JiraIssue.class);
     }
 
     @Override
@@ -198,10 +199,12 @@ public class JiraIssueTracker extends AbstractIssueTracker {
     @Override
     public boolean updateIssue(Issue issue) throws NotFoundException, AphroditeException {
         try {
+            checkIssueInstance(issue);
             checkHost(issue.getURL());
 
             com.atlassian.jira.rest.client.api.domain.Issue jiraIssue = getIssue(issue);
-            IssueInput update = WRAPPER.issueToFluentUpdate(issue, jiraIssue);
+            Project project = restClient.getProjectClient().getProject(jiraIssue.getProject().getSelf()).claim();
+            IssueInput update = WRAPPER.issueToFluentUpdate((JiraIssue) issue, jiraIssue, project);
 
             IssueRestClient issueClient = restClient.getIssueClient();
             issueClient.updateIssue(jiraIssue.getKey(), update).claim();
@@ -345,7 +348,7 @@ public class JiraIssueTracker extends AbstractIssueTracker {
                 }
             }
             if (msg.contains(TARGET_RELEASE)) {
-                String retMsg = "Release.milestone cannot be set for %2$s ''%3$s'";
+                String retMsg = "String.milestone cannot be set for %2$s ''%3$s'";
                 return getOptionalErrorMessage(retMsg, issue.getProduct(), null, issue.getURL());
             }
         }

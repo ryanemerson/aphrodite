@@ -37,7 +37,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -49,7 +51,6 @@ import org.jboss.set.aphrodite.domain.FlagStatus;
 import org.jboss.set.aphrodite.domain.Issue;
 import org.jboss.set.aphrodite.domain.IssueEstimation;
 import org.jboss.set.aphrodite.domain.IssueType;
-import org.jboss.set.aphrodite.domain.Release;
 import org.jboss.set.aphrodite.domain.Stage;
 
 import com.atlassian.jira.rest.client.api.domain.BasicComponent;
@@ -57,6 +58,7 @@ import com.atlassian.jira.rest.client.api.domain.BasicProject;
 import com.atlassian.jira.rest.client.api.domain.IssueField;
 import com.atlassian.jira.rest.client.api.domain.IssueFieldId;
 import com.atlassian.jira.rest.client.api.domain.IssueLinkType.Direction;
+import com.atlassian.jira.rest.client.api.domain.Project;
 import com.atlassian.jira.rest.client.api.domain.TimeTracking;
 import com.atlassian.jira.rest.client.api.domain.User;
 import com.atlassian.jira.rest.client.api.domain.Version;
@@ -64,6 +66,7 @@ import com.atlassian.jira.rest.client.api.domain.input.ComplexIssueInputFieldVal
 import com.atlassian.jira.rest.client.api.domain.input.FieldInput;
 import com.atlassian.jira.rest.client.api.domain.input.IssueInput;
 import com.atlassian.jira.rest.client.api.domain.input.IssueInputBuilder;
+import org.jboss.set.aphrodite.spi.NotFoundException;
 
 /**
  * @author Ryan Emerson
@@ -77,16 +80,16 @@ class IssueWrapper {
         return jiraIssueToIssue(url, jiraIssue);
     }
 
-    private void setCreationTime(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setCreationTime(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         issue.setCreationTime(jiraIssue.getCreationDate().toDate());
     }
 
-    private void setLastUpdated(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setLastUpdated(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         issue.setLastUpdated(jiraIssue.getUpdateDate().toDate());
     }
 
     Issue jiraIssueToIssue(URL url, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
-        Issue issue = new Issue(url);
+        JiraIssue issue = new JiraIssue(url);
 
         issue.setTrackerId(jiraIssue.getKey());
         issue.setSummary(jiraIssue.getSummary());
@@ -108,7 +111,7 @@ class IssueWrapper {
 
         setIssueStage(issue, jiraIssue);
         setIssueType(issue, jiraIssue);
-        setIssueRelease(issue, jiraIssue);
+        setFixVersions(issue, jiraIssue);
         setIssueDependencies(url, issue, jiraIssue.getIssueLinks());
         setIssueComments(issue, jiraIssue);
         setCreationTime(issue, jiraIssue);
@@ -118,10 +121,10 @@ class IssueWrapper {
     }
 
     // TODO find a solution for updating time estimates, see https://github.com/jboss-set/aphrodite/issues/23
-    IssueInput issueToFluentUpdate(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    IssueInput issueToFluentUpdate(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue,
+                                   Project project) throws NotFoundException {
         checkUnsupportedUpdateFields(issue);
         IssueInputBuilder inputBuilder = new IssueInputBuilder(jiraIssue.getProject().getKey(), jiraIssue.getIssueType().getId());
-
 
         issue.getSummary().ifPresent(inputBuilder::setSummary);
         inputBuilder.setFieldInput(new FieldInput(IssueFieldId.COMPONENTS_FIELD,
@@ -132,20 +135,48 @@ class IssueWrapper {
             assignee -> inputBuilder.setFieldInput(new FieldInput(IssueFieldId.ASSIGNEE_FIELD, ComplexIssueInputFieldValue.with("name", assignee)))
         );
 
-        issue.getRelease().getVersion().ifPresent(version ->
-                inputBuilder.setFieldInput(new FieldInput(IssueFieldId.FIX_VERSIONS_FIELD, new ArrayList<ComplexIssueInputFieldValue>() {{
-                    add(ComplexIssueInputFieldValue.with("name", version));
-                }})
-        ));
+        issue.getStreamStatus()
 
         // this is ok but does nothing if there is no permissions.
         issue.getStage().getStateMap().entrySet()
             .stream().filter(entry -> entry.getValue() != FlagStatus.NO_SET)
             .forEach(entry -> inputBuilder.setFieldInput(new FieldInput(JSON_CUSTOM_FIELD + FLAG_MAP.get(entry.getKey()), entry.getValue().getSymbol())));
 
-        issue.getRelease().getMilestone().ifPresent(milestone ->  inputBuilder.setFieldInput(new FieldInput(JSON_CUSTOM_FIELD + TARGET_RELEASE, ComplexIssueInputFieldValue.with("value", milestone))));
+        return updateFixVersions(issue, project, inputBuilder).build();
+    }
 
-        return inputBuilder.build();
+    private void updateStreamStatus(JiraIssue issue, Project project, IssueInputBuilder inputBuilder) {
+        Map<String, Version> versionsMap = StreamSupport.stream(project.getVersions().spliterator(), false)
+                .collect(Collectors.toMap(Version::getName, Function.identity()));
+
+        for (Map.Entry<String, FlagStatus> entry : issue.getStreamStatus().entrySet()) {
+            if (entry.getValue() != FlagStatus.ACCEPTED) {
+                Version version = versionsMap.get(entry.getKey());
+                if (version != null) {
+//                    projectVersions.add(versionsMap.get(en));
+                } else {
+                    throw new NotFoundException("No version exists for this project with name : " + versionName);
+                }
+            }
+        }
+    }
+
+    private IssueInputBuilder updateFixVersions(JiraIssue issue, Project project, IssueInputBuilder inputBuilder) throws NotFoundException {
+        Map<String, Version> versionsMap = StreamSupport.stream(project.getVersions().spliterator(), false)
+                .collect(Collectors.toMap(Version::getName, Function.identity()));
+
+        List<Version> projectVersions = new ArrayList<>();
+        for (String versionName : issue.getFixVersions()) {
+            Version version = versionsMap.get(versionName);
+            if (version != null) {
+                projectVersions.add(version);
+            } else {
+                throw new NotFoundException("No version exists for this project with name : " + versionName);
+            }
+        }
+
+        inputBuilder.setFixVersions(projectVersions);
+        return inputBuilder;
     }
 
     private void checkUnsupportedUpdateFields(Issue issue) {
@@ -153,13 +184,13 @@ class IssueWrapper {
             LOG.debug("JIRA does not support updating the reporter field, field ignored.");
     }
 
-    private void setIssueProject(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setIssueProject(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         BasicProject project = jiraIssue.getProject();
         if (project != null)
             issue.setProduct(project.getName());
     }
 
-    private void setIssueComponent(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setIssueComponent(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         Iterable<BasicComponent> components = jiraIssue.getComponents();
         List<String> tmp = new ArrayList<>();
         for(BasicComponent component : components) {
@@ -168,19 +199,19 @@ class IssueWrapper {
         issue.setComponents(tmp);
     }
 
-    private void setIssueAssignee(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setIssueAssignee(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         User assignee = jiraIssue.getAssignee();
         if (assignee != null)
             issue.setAssignee(assignee.getName());
     }
 
-    private void setIssueReporter(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setIssueReporter(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         User reporter = jiraIssue.getReporter();
         if (reporter != null)
             issue.setReporter(reporter.getName());
     }
 
-    private void setIssueStage(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setIssueStage(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         Stage stage = new Stage();
         stage.setStatus(Flag.PM, FlagStatus.getMatchingFlag((String) jiraIssue.getField(JSON_CUSTOM_FIELD + PM_ACK).getValue()));
         stage.setStatus(Flag.DEV, FlagStatus.getMatchingFlag((String) jiraIssue.getField(JSON_CUSTOM_FIELD + DEV_ACK).getValue()));
@@ -188,9 +219,7 @@ class IssueWrapper {
         issue.setStage(stage);
     }
 
-
-
-    private void setIssueType(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setIssueType(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         String type = jiraIssue.getIssueType().getName();
         try {
             issue.setType(IssueType.valueOf(type.toUpperCase()));
@@ -199,7 +228,7 @@ class IssueWrapper {
         }
     }
 
-    private void setIssueStream(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setIssueStream(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         try {
             IssueField jsonField = jiraIssue.getField(JSON_CUSTOM_FIELD + TARGET_RELEASE);
             if (jsonField == null || jsonField.getValue() == null) {
@@ -215,16 +244,17 @@ class IssueWrapper {
 
     }
 
-    private void setIssueRelease(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
-        Release release = new Release();
-        for(Version tmp : jiraIssue.getFixVersions()) {
-            release.setVersion(tmp.getName());
-            release.setMilestone("---");
+    private void setFixVersions(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+        Iterable<Version> versions = jiraIssue.getFixVersions();
+        if (versions != null) {
+            List<String> strings = StreamSupport.stream(jiraIssue.getFixVersions().spliterator(), false)
+                    .map(Version::getName)
+                    .collect(Collectors.toList());
+            issue.setFixVersions(strings);
         }
-        issue.setRelease(release);
     }
 
-    private void setIssueDependencies(URL originalUrl, Issue issue, Iterable<com.atlassian.jira.rest.client.api.domain.IssueLink> links) {
+    private void setIssueDependencies(URL originalUrl, JiraIssue issue, Iterable<com.atlassian.jira.rest.client.api.domain.IssueLink> links) {
         if (links == null)
             return;
 
@@ -239,7 +269,7 @@ class IssueWrapper {
         }
     }
 
-    private void setIssueComments(Issue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
+    private void setIssueComments(JiraIssue issue, com.atlassian.jira.rest.client.api.domain.Issue jiraIssue) {
         List<Comment> comments = new ArrayList<>();
         jiraIssue.getComments()
                 .forEach(c -> comments.add(new Comment(issue.getTrackerId().get(), Long.toString(c.getId()), c.getBody(), false)));
